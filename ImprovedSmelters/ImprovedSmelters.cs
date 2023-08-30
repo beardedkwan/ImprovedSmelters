@@ -5,9 +5,12 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reflection;
+using System.Reflection.Emit;
 using System.Text;
 using System.Threading.Tasks;
 using UnityEngine;
+using static PrivilegeManager;
 
 namespace ImprovedSmelters
 {
@@ -15,7 +18,7 @@ namespace ImprovedSmelters
     {
         public const string Name = "Improved Smelters";
         public const string Guid = "beardedkwan.ImprovedSmelters";
-        public const string Version = "1.1.0";
+        public const string Version = "1.2.0";
     }
 
     public class ImprovedSmeltersConfig
@@ -43,6 +46,9 @@ namespace ImprovedSmelters
         public static ConfigEntry<int> WindmillMaxOre { get; set; }
         public static ConfigEntry<float> WindmillSecondsPerProduct { get; set; }
 
+        // add all flag
+        public static ConfigEntry<bool> EnableAddAll { get; set; }
+
     }
 
     [BepInPlugin(PluginInfo.Guid, PluginInfo.Name, PluginInfo.Version)]
@@ -51,7 +57,7 @@ namespace ImprovedSmelters
     {
         void Awake()
         {
-            // Initialize config
+            // INITIALIZE CONFIG
 
             // kiln
             ImprovedSmeltersConfig.KilnMaxOre = Config.Bind("Kiln", "KilnMaxOre", 25, "Maximum wood for kiln");
@@ -75,6 +81,9 @@ namespace ImprovedSmelters
             // windmill
             ImprovedSmeltersConfig.WindmillMaxOre = Config.Bind("Windmill", "WindmillMaxOre", 50, "Maximum items for windmill");
             ImprovedSmeltersConfig.SWSecondsPerProduct = Config.Bind("Windmill", "SWSecondsPerProduct", 3f, "Seconds per product for windmill");
+
+            // add all flag
+            ImprovedSmeltersConfig.EnableAddAll = Config.Bind("Add All", "EnableAddAll", true, "Flag to enable add all functionality for smelters.\nThis will fill the smelter from your inventory when you use Shift+F to load the smelter.");
 
             Harmony harmony = new Harmony(PluginInfo.Guid);
             harmony.PatchAll();
@@ -117,6 +126,120 @@ namespace ImprovedSmelters
                     __instance.m_maxOre = ImprovedSmeltersConfig.WindmillMaxOre.Value;
                     __instance.m_secPerProduct = ImprovedSmeltersConfig.WindmillSecondsPerProduct.Value;
                 }
+            }
+        }
+
+        // ADD ALL PATCHES
+
+        // Fuel hover patch
+        [HarmonyPatch(typeof(Smelter), "OnHoverAddFuel")]
+        public static class OnHoverAddFuelPatch
+        {
+            private static void Postfix(ref String __result)
+            {
+                if (ImprovedSmeltersConfig.EnableAddAll.Value)
+                {
+                    __result = __result + "\n[<color=yellow><b>Shift + F</b></color>] Add All";
+                }
+            }
+        }
+
+        // Add fuel patch
+        [HarmonyPatch(typeof(Smelter), "OnAddFuel")]
+        private static class OnAddFuelPatch
+        {
+            private static bool Prefix(Smelter __instance, ref bool __result, Humanoid user, ZNetView ___m_nview)
+            {
+                // Check if Shift key is held down and F is pressed
+                if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.F) && ImprovedSmeltersConfig.EnableAddAll.Value)
+                {
+                    //UnityEngine.Debug.Log("Hit Shift+F OnAddFuel (Adding all fuel)");
+
+                    float fuelInSmelter = Traverse.Create(__instance).Method("GetFuel").GetValue<float>();
+                    float fuelToAdd = __instance.m_maxFuel - fuelInSmelter;
+
+                    Inventory playerInventory = user.GetInventory();
+                    ItemDrop.ItemData item = playerInventory.GetItem(__instance.m_fuelItem.m_itemData.m_shared.m_name);
+
+                    if (fuelToAdd > 0 && ___m_nview != null && item != null)
+                    {
+                        if (fuelToAdd > item.m_stack)
+                        {
+                            fuelToAdd = item.m_stack;
+                        }
+
+                        user.GetInventory().RemoveItem(item.m_shared.m_name, (int)fuelToAdd);
+
+                        for (int i = 0; i < fuelToAdd; i++)
+                        {
+                            ___m_nview.InvokeRPC("AddFuel");
+                        }
+                    }
+
+                    //UnityEngine.Debug.Log("Added all fuel");
+
+                    __result = false; // Return false to prevent the original method from executing
+                    return false;
+                }
+
+                // Call the original method if the Shift+F combination is not detected
+                return true;
+            }
+        }
+
+        // Ore hover patch
+        [HarmonyPatch(typeof(Smelter), "OnHoverAddOre")]
+        public static class OnHoverAddOrePatch
+        {
+            private static void Postfix(ref String __result)
+            {
+                if (ImprovedSmeltersConfig.EnableAddAll.Value)
+                {
+                    __result = __result + "\n[<color=yellow><b>Shift + F</b></color>] Add All";
+                }
+            }
+        }
+
+        // Add ore patch
+        [HarmonyPatch(typeof(Smelter), "OnAddOre")]
+        private static class OnAddOre
+        {
+            private static bool Prefix(Smelter __instance, ref bool __result, Humanoid user, ZNetView ___m_nview)
+            {
+                // Check if Shift key is held down and F is pressed
+                if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.F) && ImprovedSmeltersConfig.EnableAddAll.Value)
+                {
+                    //UnityEngine.Debug.Log("Hit Shift+F OnAddFuel (Adding all ore)");
+
+                    float oreInSmelter = Traverse.Create(__instance).Method("GetQueueSize").GetValue<int>();
+                    float oreToAdd = __instance.m_maxOre - oreInSmelter;
+
+                    Inventory playerInventory = user.GetInventory();
+                    ItemDrop.ItemData item = Traverse.Create(__instance).Method("FindCookableItem", user.GetInventory()).GetValue<ItemDrop.ItemData>();
+
+                    if (oreToAdd > 0 && ___m_nview != null && item != null)
+                    {
+                        if (oreToAdd > item.m_stack)
+                        {
+                            oreToAdd = item.m_stack;
+                        }
+
+                        user.GetInventory().RemoveItem(item, (int)oreToAdd);
+
+                        for (int i = 0; i < oreToAdd; i++)
+                        {
+                            ___m_nview.InvokeRPC("AddOre", item.m_dropPrefab.name);
+                        }
+                    }
+
+                    //UnityEngine.Debug.Log("Added all ore");
+
+                    __result = false; // Return false to prevent the original method from executing
+                    return false;
+                }
+
+                // Call the original method if the Shift+F combination is not detected
+                return true;
             }
         }
     }

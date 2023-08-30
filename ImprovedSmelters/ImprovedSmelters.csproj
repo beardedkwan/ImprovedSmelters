@@ -34,7 +34,8 @@
     <Reference Include="0Harmony">
       <HintPath>libs\0Harmony.dll</HintPath>
     </Reference>
-    <Reference Include="assembly_valheim">
+    <Reference Include="assembly_valheim, Version=0.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>libs\assembly_valheim.dll</HintPath>
     </Reference>
     <Reference Include="BepInEx">
