@@ -85,7 +85,7 @@ namespace ImprovedSmelters
 
             // add all
             ImprovedSmeltersConfig.EnableAddAll = Config.Bind("Add All", "EnableAddAll", true, "Flag to enable add all functionality for smelters.\nThis will fill the smelter from your inventory when you use Shift+F to load the smelter.");
-            ImprovedSmeltersConfig.UseKey = Config.Bind("Add All", "UseKey", "F", "Shift + [UseKey] to use add all for smelters");
+            ImprovedSmeltersConfig.UseKey = Config.Bind("Add All", "UseKey", "F", "Shift + [UseKey] to use add all for smelters.\nMake this key the same as your 'use' key in your game settings.");
 
             Harmony harmony = new Harmony(PluginInfo.Guid);
             harmony.PatchAll();
@@ -141,7 +141,7 @@ namespace ImprovedSmelters
             {
                 if (ImprovedSmeltersConfig.EnableAddAll.Value)
                 {
-                    __result = __result + "\n[<color=yellow><b>Shift + F</b></color>] Add All";
+                    __result = __result + $"\n[<color=yellow><b>Shift + {ImprovedSmeltersConfig.UseKey.Value}</b></color>] Add All";
                 }
             }
         }
@@ -153,7 +153,8 @@ namespace ImprovedSmelters
             private static bool Prefix(Smelter __instance, ref bool __result, Humanoid user, ZNetView ___m_nview)
             {
                 // Check if Shift key is held down and F is pressed
-                if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.F) && ImprovedSmeltersConfig.EnableAddAll.Value)
+                string keyUse = ImprovedSmeltersConfig.UseKey.Value;
+                if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown((KeyCode)Enum.Parse(typeof(KeyCode), keyUse)) && ImprovedSmeltersConfig.EnableAddAll.Value)
                 {
                     //UnityEngine.Debug.Log("Hit Shift+F OnAddFuel (Adding all fuel)");
 
@@ -197,7 +198,7 @@ namespace ImprovedSmelters
             {
                 if (ImprovedSmeltersConfig.EnableAddAll.Value)
                 {
-                    __result = __result + "\n[<color=yellow><b>Shift + F</b></color>] Add All";
+                    __result = __result + $"\n[<color=yellow><b>Shift + {ImprovedSmeltersConfig.UseKey.Value}</b></color>] Add All";
                 }
             }
         }
