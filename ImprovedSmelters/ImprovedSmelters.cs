@@ -18,7 +18,7 @@ namespace ImprovedSmelters
     {
         public const string Name = "Improved Smelters";
         public const string Guid = "beardedkwan.ImprovedSmelters";
-        public const string Version = "1.2.0";
+        public const string Version = "1.2.1";
     }
 
     public class ImprovedSmeltersConfig
@@ -46,8 +46,9 @@ namespace ImprovedSmelters
         public static ConfigEntry<int> WindmillMaxOre { get; set; }
         public static ConfigEntry<float> WindmillSecondsPerProduct { get; set; }
 
-        // add all flag
+        // add all
         public static ConfigEntry<bool> EnableAddAll { get; set; }
+        public static ConfigEntry<string> UseKey { get; set; }
 
     }
 
@@ -82,8 +83,9 @@ namespace ImprovedSmelters
             ImprovedSmeltersConfig.WindmillMaxOre = Config.Bind("Windmill", "WindmillMaxOre", 50, "Maximum items for windmill");
             ImprovedSmeltersConfig.SWSecondsPerProduct = Config.Bind("Windmill", "SWSecondsPerProduct", 3f, "Seconds per product for windmill");
 
-            // add all flag
+            // add all
             ImprovedSmeltersConfig.EnableAddAll = Config.Bind("Add All", "EnableAddAll", true, "Flag to enable add all functionality for smelters.\nThis will fill the smelter from your inventory when you use Shift+F to load the smelter.");
+            ImprovedSmeltersConfig.UseKey = Config.Bind("Add All", "UseKey", "F", "Shift + [UseKey] to use add all for smelters");
 
             Harmony harmony = new Harmony(PluginInfo.Guid);
             harmony.PatchAll();
@@ -206,8 +208,9 @@ namespace ImprovedSmelters
         {
             private static bool Prefix(Smelter __instance, ref bool __result, Humanoid user, ZNetView ___m_nview)
             {
-                // Check if Shift key is held down and F is pressed
-                if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown(KeyCode.F) && ImprovedSmeltersConfig.EnableAddAll.Value)
+                // Check if Shift key is held down and [UseKey] is pressed
+                string keyUse = ImprovedSmeltersConfig.UseKey.Value;
+                if (Input.GetKey(KeyCode.LeftShift) && Input.GetKeyDown((KeyCode)Enum.Parse(typeof(KeyCode), keyUse)) && ImprovedSmeltersConfig.EnableAddAll.Value)
                 {
                     //UnityEngine.Debug.Log("Hit Shift+F OnAddFuel (Adding all ore)");
 
